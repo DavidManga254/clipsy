@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	windowsClip "github.com/DavidManga254/clipsy/lib/clipboard/windows"
 	"github.com/DavidManga254/clipsy/lib/logger"
 	"golang.design/x/clipboard"
 )
@@ -95,7 +96,7 @@ func LatestClipboardImage() ([]byte, error) {
 }
 
 
-func subscribeToClipboard(){
+func SubscribeToClipboard(ctx context.Context){
 	ClipboardInitErr := InitClipboard() 
 
 	if ClipboardInitErr != nil {
@@ -103,9 +104,142 @@ func subscribeToClipboard(){
 
 	}
 
-	imageChannel := clipboard.Watch(context.TODO(),clipboard.FmtImage)
-	textChannel := clipboard.Watch(context.TODO(),clipboard.FmtText)
+	imageChannel := clipboard.Watch(ctx,clipboard.FmtImage)
+	textChannel := clipboard.Watch(ctx,clipboard.FmtText)
+
+	fileChannel := make(chan []string,8)
+	go watchwindowsClipboard(ctx,fileChannel)
+
+
+	go func() {
+		for {
+			select {
+				case <-ctx.Done() :
+					return
+				case imageValue, ok := <- imageChannel : {
+					if !ok {
+						return
+					}
+
+					go processTextAndImage(imageValue,"IMAGE")
+				}
+				case textValue, ok := <-textChannel : {
+					if !ok {
+						return
+					}
+
+					go processTextAndImage(textValue,"TEXT")
+				}
+				case filePaths,ok := <-fileChannel : {
+					if !ok {
+						return
+					}
+
+					go processFile(filePaths)
+
+				}
+			}
+		}
+		
+	}()
 	
+}
+
+
+func processTextAndImage(value []byte, valueType string){
+	logger.Info("%v",value)
+	// switch valueType {
+	// 	case "IMAGE" : {
+	// 		imageItem := ClipboardItem{
+	// 			Kind: KindImage,
+	// 			ImageData: value,
+	// 			Text: "",
+	// 			Files: make([]string, 0),
+	// 			ID: "",
+	// 			Source: "",
+	// 			CreatedAt: time.Now(),
+	// 		}
+	// 	}
+	// 	case "TEXT" : {
+	// 		textItem := ClipboardItem{
+	// 			Kind: KindText,
+	// 			ImageData: make([]byte, 0),
+	// 			Text: string(value),
+	// 			Files: make([]string, 0),
+	// 			ID: "",
+	// 			Source: "",
+	// 			CreatedAt: time.Now(),
+	// 		}
+	// 	}
+	// 	case "FILES" : {
+	// 		fileItem := ClipboardItem{
+	// 			Kind: KindFiles,
+	// 			ImageData: make([]byte, 0),
+	// 			Text: string(value),
+	// 			Files: value,
+	// 			ID: "",
+	// 			Source: "",
+	// 			CreatedAt: time.Now(),
+	// 		}
+	// 	}
+	// }
+}
+
+func processFile(value []string){
+	logger.Info("%v",value)
+	
+	// fileItem := ClipboardItem{
+	// 	Kind: KindFiles,
+	// 	ImageData: make([]byte, 0),
+	// 	Text: "",
+	// 	Files: value,
+	// 	ID: "",
+	// 	Source: "",
+	// 	CreatedAt: time.Now(),
+	// }
+			
+}
+
+func watchwindowsClipboard(ctx context.Context, out chan<- []string){
+	//poll every 300ms
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+
+	//last polled file list
+	var last []string
+
+	for {
+		select {
+			case <-ctx.Done(): {
+				return
+			}
+			case <-ticker.C : {
+				copiedFilePaths, err := windowsClip.ReadWindowsClipboard()
+
+				if err != nil {
+					//TODO check how to work on specific error issues 
+					continue
+				}
+
+				if len(copiedFilePaths) > 0 && !equalStringSlices(last,copiedFilePaths){
+					last = append([]string(nil), copiedFilePaths...)        // copy for last
+    				out <- append([]string(nil), copiedFilePaths...) 
+				}
+			}
+		}
+	}
+}
+
+func equalStringSlices(a, b []string) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    for i := range a {
+        if a[i] != b[i] {
+            return false
+        }
+    }
+    return true
 }
 
 

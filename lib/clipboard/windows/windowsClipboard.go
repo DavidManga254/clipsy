@@ -4,101 +4,100 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/DavidManga254/clipsy/lib/logger"
 	"golang.org/x/sys/windows"
 )
 
 var (
-    user32   = windows.NewLazySystemDLL("user32.dll")
-    kernel32 = windows.NewLazySystemDLL("kernel32.dll")
+	user32   = windows.NewLazySystemDLL("user32.dll")
+	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
 	shell32  = windows.NewLazySystemDLL("shell32.dll")
 )
 
 var (
-    procOpenClipboard    = user32.NewProc("OpenClipboard")
-    procCloseClipboard   = user32.NewProc("CloseClipboard")
-    procGetClipboardData = user32.NewProc("GetClipboardData")
-    procGlobalLock       = kernel32.NewProc("GlobalLock")
-    procGlobalUnlock     = kernel32.NewProc("GlobalUnlock")
-    procDragQueryFileW   = shell32.NewProc("DragQueryFileW")
+	procOpenClipboard    = user32.NewProc("OpenClipboard")
+	procCloseClipboard   = user32.NewProc("CloseClipboard")
+	procGetClipboardData = user32.NewProc("GetClipboardData")
+	procGlobalLock       = kernel32.NewProc("GlobalLock")
+	procGlobalUnlock     = kernel32.NewProc("GlobalUnlock")
+	procDragQueryFileW   = shell32.NewProc("DragQueryFileW")
 )
 
+const (
+	cfHDrop      = 15         
+	maxUint32Idx = 0xFFFFFFFF  
+)
 
+// ReadWindowsClipboard reads file paths from the Windows clipboard when the
+// current clipboard content is CF_HDROP (file drop). It returns:
+//
+// - (nil, nil) if the clipboard does not currently contain files
+// - ([]string, nil) with file paths if it does
+// - (nil, error) on a real error (open clipboard, lock failure, etc.)
 func ReadWindowsClipboard() ([]string, error) {
-	r1, _, _ := procOpenClipboard.Call(0)
-	logger.Info("%v",r1)
-
+	// Open the clipboard for this process (hwnd = 0)
+	r1, _, err := procOpenClipboard.Call(0)
 	if r1 == 0 {
-		logger.Error("Failed to open clipboard")
+		// Failed to open clipboard at all
+		if err != nil {
+			return nil, fmt.Errorf("OpenClipboard failed: %w", err)
+		}
+		return nil, fmt.Errorf("OpenClipboard failed")
+	}
+	defer procCloseClipboard.Call()
 
-		return nil, fmt.Errorf("failed to open clipboard")
+	// Get handle to CF_HDROP data
+	hDrop, _, _ := procGetClipboardData.Call(cfHDrop)
+	if hDrop == 0 {
+		// Clipboard doesn't contain CF_HDROP normal case
+		return nil, nil
 	}
 
-
-	
-	// uintptr is an integer type that is large enough to hold the bit pattern of
-	// any pointer.
-	//r2 is  A handle to a global memory block containing the DROPFILES structure + file list.
-	fileGlobalMemLock, _, _ := procGetClipboardData.Call(15)
-
-	if fileGlobalMemLock == 0 {
-		logger.Error("Current copied item in the clipboard is not a file(s)")
-
-		return nil,fmt.Errorf("current copied item in the clipboard is not a file(s)")
+	// Lock the global memory handle to get a pointer to DROPFILES + file list
+	ptr, _, err := procGlobalLock.Call(hDrop)
+	if ptr == 0 {
+		if err != nil {
+			return nil, fmt.Errorf("GlobalLock failed: %w", err)
+		}
+		return nil, fmt.Errorf("GlobalLock failed")
 	}
+	defer procGlobalUnlock.Call(hDrop)
 
-	logger.Info("%v",fileGlobalMemLock)
-
-
-	filesAddress,_,_ := procGlobalLock.Call(fileGlobalMemLock)
-
-	if filesAddress == 0 {
-		logger.Error("Failed to get memory addres of copied files ")
-
-		return nil,fmt.Errorf("failed to get memory addres of copied files ")
-
-	}
-
-
-	filecount,_,_ := procDragQueryFileW.Call(
-		filesAddress,
-		uintptr(0xFFFFFFFF),
+	// First call to DragQueryFileW with index = 0xFFFFFFFF gets the file count
+	fileCount, _, _ := procDragQueryFileW.Call(
+		ptr,
+		maxUint32Idx,
 		0,
 		0,
 	)
-
-
-	filepaths := make([]string,0)
-
-	for i := 0; i < int(filecount); i++ {
-		fileNameLength,_,_ := procDragQueryFileW.Call(
-			filesAddress,
-			uintptr(i),
-			0,
-			0,
-		)
-
-		fileNameBuffer := make([]uint16, fileNameLength+1)
-
-		_,_,_ = procDragQueryFileW.Call(
-			filesAddress,
-			uintptr(i),
-			uintptr(unsafe.Pointer(&fileNameBuffer[0])),
-			uintptr(fileNameLength + 1),
-		)
-
-		filepaths = append(filepaths,windows.UTF16ToString(fileNameBuffer))
+	if fileCount == 0 {
+		return nil, nil
 	}
-	
 
-	defer func() {
-		//close clipboard
-		procCloseClipboard.Call()
+	paths := make([]string, 0, int(fileCount))
 
-		//unlock global
-    	procGlobalUnlock.Call(fileGlobalMemLock)
-	}()
+	// For each file, query its length then its path
+	for i := 0; i < int(fileCount); i++ {
+		nameLen, _, _ := procDragQueryFileW.Call(
+			ptr,
+			uintptr(i),
+			0,
+			0,
+		)
+		if nameLen == 0 {
+			continue
+		}
 
+		buf := make([]uint16, nameLen+1)
 
-	return filepaths,nil
+		_, _, _ = procDragQueryFileW.Call(
+			ptr,
+			uintptr(i),
+			uintptr(unsafe.Pointer(&buf[0])),
+			uintptr(nameLen+1),
+		)
+
+		paths = append(paths, windows.UTF16ToString(buf))
+	}
+
+	return paths, nil
 }
