@@ -6,12 +6,16 @@ import (
 	"os/signal"
 	"syscall"
 
+	db "github.com/DavidManga254/clipsy/lib/DB"
 	clip "github.com/DavidManga254/clipsy/lib/clipboard"
 	"github.com/DavidManga254/clipsy/lib/logger"
 )
 
 func main() {
 	logger.Info("Starting up Clipsy oe.....")
+
+	//init db 
+	db.InitDB()
 
 
 	//subscriber to clipboard 
