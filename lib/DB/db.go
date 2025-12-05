@@ -10,7 +10,7 @@ import (
 	"github.com/DavidManga254/clipsy/lib/logger"
 )
 
-var database *sql.DB
+var Database *sql.DB
 
 func InitDB(){
 	var dbPath string = "./clipsy.db"
@@ -23,14 +23,14 @@ func InitDB(){
         log.Fatalf("failed to open db: %v", err)
     }
 
-	database = db
+	Database = db
 
 
-	if err := database.Ping(); err != nil {
+	if err := Database.Ping(); err != nil {
         log.Fatalf("failed to ping db: %v", err)
     }
 
-    if err := migrations.Migrate(database); err != nil {
+    if err := migrations.Migrate(Database); err != nil {
         log.Fatalf("failed to migrate db: %v", err)
     }
 

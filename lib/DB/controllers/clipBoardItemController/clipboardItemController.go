@@ -5,11 +5,30 @@ import (
 	"database/sql"
 	"encoding/json"
 	"time"
-
-	clip "github.com/DavidManga254/clipsy/lib/clipboard"
 )
 
-func New(db *sql.DB,item clip.ClipboardItem, ctx context.Context) error {
+type Kind int
+
+
+const (
+    KindUnknown Kind = iota
+    KindText
+    KindImage
+    KindFiles
+)
+
+
+type ClipboardItem struct {
+    ID        string   
+    Kind      Kind      
+    Text      string    
+    ImageData []byte    
+    Files     []string 
+    Source    string    // "local" or device ID in future
+    CreatedAt time.Time
+}
+
+func New(db *sql.DB,item ClipboardItem, ctx context.Context) error {
 	var insertClipboardItemSQL string = `
         INSERT INTO clipboard_items (
             id, kind, text, image_data, files, source, created_at
@@ -65,7 +84,7 @@ func Delete(db *sql.DB,itemId string, ctx context.Context) error {
 
 
 type PageResult struct {
-    Items      []clip.ClipboardItem
+    Items      []ClipboardItem
     TotalCount int
     Page       int
     PageSize   int
@@ -112,7 +131,7 @@ func ListClipboardItems(ctx context.Context, db *sql.DB, page, pageSize int) (Pa
     }
     defer rows.Close()
 
-    items := []clip.ClipboardItem{}
+    items := []ClipboardItem{}
 
     for rows.Next() {
         var (
@@ -150,22 +169,20 @@ func ListClipboardItems(ctx context.Context, db *sql.DB, page, pageSize int) (Pa
         }
 
         // convert kind string to  Kind type
-        var kind clip.Kind
+        var kind Kind
 
-		if kindStr == "0" {
-			kind = clip.KindUnknown
-		} else if kindStr == "1" {
-			kind = clip.KindText
+        switch kindStr {
+            case "0":
+                kind = KindUnknown
+            case "1":
+			    kind = KindText
+            case "2":
+			    kind = KindImage
+            case "3":
+			    kind = KindFiles 
+        }
 
-		} else if kindStr == "2" {
-			kind = clip.KindImage
-
-		} else if kindStr == "3" {
-			kind = clip.KindFiles
-
-		}
-
-        item := clip.ClipboardItem{
+        item := ClipboardItem{
             ID:        id,
             Kind:      kind,
             Text:      text.String, 

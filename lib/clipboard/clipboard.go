@@ -3,47 +3,51 @@ package clip
 import (
 	"context"
 	"fmt"
-	"sync"
+
+	// "sync"
 	"time"
 
+	db "github.com/DavidManga254/clipsy/lib/DB"
+	clipboarditemcontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/clipBoardItemController"
 	windowsClip "github.com/DavidManga254/clipsy/lib/clipboard/windows"
 	"github.com/DavidManga254/clipsy/lib/logger"
+	"github.com/google/uuid"
 	"golang.design/x/clipboard"
 )
 
-type Kind int
+// type Kind int
 
-const (
-    KindUnknown Kind = iota
-    KindText
-    KindImage
-    KindFiles
-)
+// const (
+//     KindUnknown Kind = iota
+//     KindText
+//     KindImage
+//     KindFiles
+// )
 
-//single clipboard item
-type ClipboardItem struct {
-    ID        string   
-    Kind      Kind      
-    Text      string    
-    ImageData []byte    
-    Files     []string 
-    Source    string    // "local" or device ID in future
-    CreatedAt time.Time
-}
+// //single clipboard item
+// type ClipboardItem struct {
+//     ID        string
+//     Kind      Kind
+//     Text      string
+//     ImageData []byte
+//     Files     []string
+//     Source    string    // "local" or device ID in future
+//     CreatedAt time.Time
+// }
 
-type Clipboard struct {
-	mu sync.RWMutex
+// type Clipboard struct {
+// 	mu sync.RWMutex
 
-	initialized bool
-	accessible bool
+// 	initialized bool
+// 	accessible bool
 
-	current *ClipboardItem
-	history []ClipboardItem
-	maxHistory int
+// 	current *ClipboardItem
+// 	history []ClipboardItem
+// 	maxHistory int
 
-	events chan ClipboardItem
+// 	events chan ClipboardItem
 
-}
+// }
 
 func InitClipboard() error {
 	err := clipboard.Init()
@@ -121,21 +125,21 @@ func SubscribeToClipboard(ctx context.Context){
 						return
 					}
 
-					go processTextAndImage(imageValue,"IMAGE")
+					go processTextAndImage(imageValue,"IMAGE",ctx)
 				}
 				case textValue, ok := <-textChannel : {
 					if !ok {
 						return
 					}
 
-					go processTextAndImage(textValue,"TEXT")
+					go processTextAndImage(textValue,"TEXT",ctx)
 				}
 				case filePaths,ok := <-fileChannel : {
 					if !ok {
 						return
 					}
 
-					go processFile(filePaths)
+					go processFile(filePaths,ctx)
 
 				}
 			}
@@ -146,58 +150,73 @@ func SubscribeToClipboard(ctx context.Context){
 }
 
 
-func processTextAndImage(value []byte, valueType string){
+func processTextAndImage(value []byte, valueType string, ctx context.Context) error{
 	logger.Info("%v",value)
-	// switch valueType {
-	// 	case "IMAGE" : {
-	// 		imageItem := ClipboardItem{
-	// 			Kind: KindImage,
-	// 			ImageData: value,
-	// 			Text: "",
-	// 			Files: make([]string, 0),
-	// 			ID: "",
-	// 			Source: "",
-	// 			CreatedAt: time.Now(),
-	// 		}
-	// 	}
-	// 	case "TEXT" : {
-	// 		textItem := ClipboardItem{
-	// 			Kind: KindText,
-	// 			ImageData: make([]byte, 0),
-	// 			Text: string(value),
-	// 			Files: make([]string, 0),
-	// 			ID: "",
-	// 			Source: "",
-	// 			CreatedAt: time.Now(),
-	// 		}
-	// 	}
-	// 	case "FILES" : {
-	// 		fileItem := ClipboardItem{
-	// 			Kind: KindFiles,
-	// 			ImageData: make([]byte, 0),
-	// 			Text: string(value),
-	// 			Files: value,
-	// 			ID: "",
-	// 			Source: "",
-	// 			CreatedAt: time.Now(),
-	// 		}
-	// 	}
-	// }
+
+	itemId := uuid.New().String()
+
+	switch valueType {
+		case "IMAGE" : {
+			imageItem := clipboarditemcontroller.ClipboardItem{
+				Kind: clipboarditemcontroller.KindImage,
+				ImageData: value,
+				Text: "",
+				Files: make([]string, 0),
+				ID: itemId,
+				Source: "",
+				CreatedAt: time.Now(),
+			}
+
+			err := clipboarditemcontroller.New(db.Database,clipboarditemcontroller.ClipboardItem(imageItem),ctx)
+
+			if err != nil {
+				logger.Error("%v",err)
+			}
+
+			return err
+
+		}
+		case "TEXT" : {
+			textItem := clipboarditemcontroller.ClipboardItem{
+				Kind: clipboarditemcontroller.KindText,
+				ImageData: make([]byte, 0),
+				Text: string(value),
+				Files: make([]string, 0),
+				ID: itemId,
+				Source: "",
+				CreatedAt: time.Now(),
+			}
+
+			err := clipboarditemcontroller.New(db.Database,textItem,ctx)
+
+			if err != nil {
+				logger.Error("%v",err)
+			}
+
+			return err
+		}
+	}
+
+	return nil
 }
 
-func processFile(value []string){
+func processFile(value []string, ctx context.Context) error{
 	logger.Info("%v",value)
 	
-	// fileItem := ClipboardItem{
-	// 	Kind: KindFiles,
-	// 	ImageData: make([]byte, 0),
-	// 	Text: "",
-	// 	Files: value,
-	// 	ID: "",
-	// 	Source: "",
-	// 	CreatedAt: time.Now(),
-	// }
-			
+	fileItem := clipboarditemcontroller.ClipboardItem{
+		Kind: clipboarditemcontroller.KindFiles,
+		ImageData: make([]byte, 0),
+		Text: "",
+		Files: value,
+		ID: uuid.New().String(),
+		Source: "",
+		CreatedAt: time.Now(),
+		
+	}
+
+	err := clipboarditemcontroller.New(db.Database,fileItem,ctx)
+
+	return err
 }
 
 func watchwindowsClipboard(ctx context.Context, out chan<- []string){
