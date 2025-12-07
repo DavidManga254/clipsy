@@ -7,13 +7,13 @@ import (
 	"syscall"
 
 	db "github.com/DavidManga254/clipsy/lib/DB"
-	clipboarditemcontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/clipBoardItemController"
 	clip "github.com/DavidManga254/clipsy/lib/clipboard"
 	"github.com/DavidManga254/clipsy/lib/logger"
+	peerDiscovery "github.com/DavidManga254/clipsy/lib/peers/discovery"
 )
 
 func main() {
-	logger.Info("Starting up Clipsy oe.....")
+	logger.Info("Starting up Clipsy .....")
 
 	//init db 
 	db.InitDB()
@@ -24,13 +24,15 @@ func main() {
 	defer cancel()
 	clip.SubscribeToClipboard(watcherCtx)
 
-	clipboarditems, err := clipboarditemcontroller.ListClipboardItems(watcherCtx,db.Database,1,10)
+	// clipboarditems, err := clipboarditemcontroller.ListClipboardItems(watcherCtx,db.Database,1,10)
 
-	if err != nil {
-		logger.Error("%v",err)
-	}
+	// if err != nil {
+	// 	logger.Error("%v",err)
+	// }
 
-	logger.Info("%v",clipboarditems)
+	// logger.Info("%v",clipboarditems)
+
+	peerDiscovery.DiscoverPeers(watcherCtx)
 	
 
 	exit()
