@@ -6,6 +6,9 @@ import (
 	"net"
 	"time"
 
+	db "github.com/DavidManga254/clipsy/lib/DB"
+	appmetacontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/appMetaController"
+	peerscontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/peerController"
 	"github.com/DavidManga254/clipsy/lib/logger"
 )
 
@@ -97,15 +100,50 @@ func DiscoverPeers(ctx context.Context) error {
 			continue
 		}
 
-		logger.Info("here is received address %v", address.IP)
-		logger.Info("Here is received data :: %v", payload)
+		deviceId,err := appmetacontroller.GetOrCreateDeviceID(ctx,db.Database)
+
+		if err != nil {
+			logger.Error("error getting device id:: %v", err)
+			continue
+		}
+
+		if deviceId == payload.DeviceID {
+			continue
+		}
+
+		var peerDbData peerscontroller.Peer = peerscontroller.Peer{
+			DeviceID: payload.DeviceID,
+			IP: address.IP.String(),
+			Port: address.Port,
+			DeviceName: payload.Metadata.DeviceName,
+			ProtocolID: "",
+			Status: peerscontroller.PeerStatusDiscovered,
+			Metadata: make(map[string]string),
+			CreatedAt: time.Now(),
+			LastSeen: time.Now(),
+		}
+
+		err = peerscontroller.New(db.Database,peerDbData,ctx)
+
+		if err != nil {
+			logger.Error("error adding resolved peer to DB :: %v", err)
+			continue
+		}
 	}
 }
 
 func PingPeers(ctx context.Context) error{
+	deviceId,err := appmetacontroller.GetOrCreateDeviceID(ctx,db.Database)
+
+	if err != nil {
+		logger.Error("error getting device id:: %v", err)
+		
+		return err
+	}
+
 	deviceInfo := DiscoverPeer{
 		MesssageType: DiscoverMessage,
-		DeviceID: "",
+		DeviceID: deviceId,
 		Port: "40000",
 		Metadata: struct{DeviceName string}{DeviceName: "Dave"},
 	}
