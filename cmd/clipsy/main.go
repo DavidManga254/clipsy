@@ -32,8 +32,9 @@ func main() {
 
 	// logger.Info("%v",clipboarditems)
 
-	peerDiscovery.DiscoverPeers(watcherCtx)
+	go peerDiscovery.DiscoverPeers(watcherCtx)
 	
+	go peerDiscovery.PingPeers(watcherCtx)
 
 	exit()
 

@@ -98,6 +98,59 @@ func DiscoverPeers(ctx context.Context) error {
 		}
 
 		logger.Info("here is received address %v", address)
-		logger.Info("Here is received data :: %v", payload.DeviceID)
+		logger.Info("Here is received data :: %v", payload)
+	}
+}
+
+func PingPeers(ctx context.Context) error{
+	deviceInfo := DiscoverPeer{
+		MesssageType: DiscoverMessage,
+		DeviceID: "",
+		Port: "40000",
+		Metadata: struct{DeviceName string}{DeviceName: "Dave"},
+	}
+
+	udpAdrr, err := net.ResolveUDPAddr("udp4","127.0.0.1:40000")
+
+	if err != nil {
+		logger.Error("Error allocating address :: %v",err)
+
+		return err
+	}
+
+	udpConn,err := net.DialUDP("udp4",nil,udpAdrr)
+
+	if err != nil {
+		logger.Error("Error dialing up %v",err)
+
+		return err
+	}
+
+	marshalMessage, err := json.Marshal(deviceInfo)
+
+	if err != nil {
+		logger.Error("Error marshalling the deviceinfo to json %v",err)
+
+		return err
+	}
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		logger.Info("sending")
+		select{
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-ticker.C:{
+				_,err := udpConn.Write(marshalMessage)
+
+				if err != nil {
+					logger.Error("error sending ping message %v",err)
+
+					continue
+				}
+			}
+		}
 	}
 }
