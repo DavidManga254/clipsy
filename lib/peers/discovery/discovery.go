@@ -97,7 +97,7 @@ func DiscoverPeers(ctx context.Context) error {
 			continue
 		}
 
-		logger.Info("here is received address %v", address)
+		logger.Info("here is received address %v", address.IP)
 		logger.Info("Here is received data :: %v", payload)
 	}
 }
