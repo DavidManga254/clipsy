@@ -121,6 +121,7 @@ func DiscoverPeers(ctx context.Context) error {
 			Metadata: make(map[string]string),
 			CreatedAt: time.Now(),
 			LastSeen: time.Now(),
+			Is_trusted:0,
 		}
 
 		err = peerscontroller.New(db.Database,peerDbData,ctx)

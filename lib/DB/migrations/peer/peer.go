@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS peers (
     status       TEXT NOT NULL,        -- "discovered", "connecting", "connected", "dead"
     protocol_id  TEXT,                 -- optional: protocol identifier/version
     metadata     TEXT,                 -- JSON-encoded extra metadata (nullable)
+    is_trusted   INTEGER NOT NULL DEFAULT 0,
     last_seen    DATETIME NOT NULL,    -- last discovery ping time (ISO8601)
     created_at   DATETIME NOT NULL     -- when this peer was first seen
 );

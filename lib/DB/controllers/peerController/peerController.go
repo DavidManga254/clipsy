@@ -26,6 +26,7 @@ type Peer struct {
 	Metadata   map[string]string
 	LastSeen   time.Time
 	CreatedAt  time.Time
+	Is_trusted int
 }
 
 func New(db *sql.DB, p Peer, ctx context.Context) error {
@@ -39,8 +40,9 @@ func New(db *sql.DB, p Peer, ctx context.Context) error {
             protocol_id,
             metadata,
             last_seen,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            created_at,
+			is_trusted
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?);
     `
 
 	metadataJSON, err := json.Marshal(p.Metadata)
@@ -68,6 +70,7 @@ func New(db *sql.DB, p Peer, ctx context.Context) error {
 		string(metadataJSON),
 		p.LastSeen,
 		p.CreatedAt,
+		p.Is_trusted,
 	)
 	if err != nil {
 		return err
@@ -93,6 +96,70 @@ func Delete(db *sql.DB, deviceID string, ctx context.Context) error {
 	return nil
 }
 
+func GetPeerById(db *sql.DB, deviceID string, ctx context.Context) (Peer,error) {
+	var getPeerSQL string = `SELECT device_id, ip, port, device_name, status, protocol_id, metadata, last_seen, created_at FROM peers WHERE device_id = ? LIMIT 1;`
+
+	var (
+		id           string
+		ip           string
+		port         int
+		deviceName   sql.NullString
+		statusStr    string
+		protocolID   sql.NullString
+		metadataJSON sql.NullString
+		lastSeenStr  string
+		createdAtStr string
+		is_trusted int
+	)
+
+	err := db.QueryRowContext(ctx, getPeerSQL, deviceID).Scan(
+		&id,
+		&ip,
+		&port,
+		&deviceName,
+		&statusStr,
+		&protocolID,
+		&metadataJSON,
+		&lastSeenStr,
+		&createdAtStr,
+		&is_trusted,
+	)
+	if err != nil {
+		return Peer{}, err
+	}
+
+	lastSeen, err := time.Parse(time.RFC3339, lastSeenStr)
+	if err != nil {
+		lastSeen = time.Time{}
+	}
+
+	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	if err != nil {
+		createdAt = time.Time{}
+	}
+
+	metadata := map[string]string{}
+	if metadataJSON.Valid && metadataJSON.String != "" {
+		_ = json.Unmarshal([]byte(metadataJSON.String), &metadata)
+	}
+
+	p := Peer{
+		DeviceID:   id,
+		IP:         ip,
+		Port:       port,
+		DeviceName: deviceName.String,
+		Status:     PeerStatus(statusStr),
+		ProtocolID: protocolID.String,
+		Metadata:   metadata,
+		LastSeen:   lastSeen,
+		CreatedAt:  createdAt,
+		Is_trusted: is_trusted,
+	}
+
+	return p, nil
+
+}
+
 type PageResult struct {
 	Items      []Peer
 	TotalCount int
@@ -111,7 +178,8 @@ func ListPeers(ctx context.Context, db *sql.DB, page, pageSize int) (PageResult,
 			protocol_id,
 			metadata,
 			last_seen,
-			created_at
+			created_at,
+			is_trusted
 		FROM peers
 		ORDER BY last_seen DESC
 		LIMIT ? OFFSET ?;
@@ -154,6 +222,7 @@ func ListPeers(ctx context.Context, db *sql.DB, page, pageSize int) (PageResult,
 			metadataJSON  sql.NullString
 			lastSeenStr   string
 			createdAtStr  string
+			is_trusted int
 		)
 
 		if err := rows.Scan(
@@ -166,6 +235,7 @@ func ListPeers(ctx context.Context, db *sql.DB, page, pageSize int) (PageResult,
 			&metadataJSON,
 			&lastSeenStr,
 			&createdAtStr,
+			&is_trusted,
 		); err != nil {
 			return PageResult{}, err
 		}
@@ -195,6 +265,7 @@ func ListPeers(ctx context.Context, db *sql.DB, page, pageSize int) (PageResult,
 			Metadata:   metadata,
 			LastSeen:   lastSeen,
 			CreatedAt:  createdAt,
+			Is_trusted: is_trusted,
 		}
 
 		items = append(items, p)
