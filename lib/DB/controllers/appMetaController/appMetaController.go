@@ -10,22 +10,54 @@ import (
 
 const deviceIDKey = "device_id"
 
+type DeviceDetails struct {
+	deviceId string
+	tcpPort int
+}
+
 // GetDeviceID returns the current device ID if present.
 // If not set, it returns sql.ErrNoRows.
-func GetDeviceID(ctx context.Context, db *sql.DB) (string, error) {
+func GetDeviceDetails(ctx context.Context, db *sql.DB) (DeviceDetails, error) {
 	const selectSQL = `
-        SELECT value
+        SELECT value,tcpPort
         FROM app_meta
         WHERE key = ?;
     `
 
 	var value string
-	err := db.QueryRowContext(ctx, selectSQL, deviceIDKey).Scan(&value)
+	var tcpPort int
+
+	err := db.QueryRowContext(ctx, selectSQL, deviceIDKey).Scan(&value,&tcpPort)
 	if err != nil {
-		return "", err
+		return DeviceDetails{}, err
 	}
 
-	return value, nil
+	deviceDetails := DeviceDetails {
+		deviceId: value,
+		tcpPort: tcpPort,
+	}
+
+
+
+	return deviceDetails, nil
+}
+
+func SetDeviceTcpDetails(ctx context.Context,db *sql.DB,tcpPort int) error {
+	const updateSql = `
+		UPDATE app_meta
+		SET 
+			tcpPort = ?
+		WHERE key = ?
+	`
+
+	_, err := db.ExecContext(
+		ctx,
+		updateSql,
+		tcpPort,
+		deviceIDKey,
+	)
+
+	return err
 }
 
 
@@ -47,15 +79,16 @@ func SetDeviceID(ctx context.Context, db *sql.DB, id string) error {
 		id,
 		now,
 	)
+
 	return err
 }
 
 // GetOrCreateDeviceID fetches the device ID if it exists,
 // otherwise generates a new one, persists it, and returns it.
 func GetOrCreateDeviceID(ctx context.Context, db *sql.DB) (string, error) {
-	id, err := GetDeviceID(ctx, db)
-	if err == nil && id != "" {
-		return id, nil
+	deviceDetails, err := GetDeviceDetails(ctx, db)
+	if err == nil && deviceDetails.deviceId != "" {
+		return deviceDetails.deviceId, nil
 	}
 
 	if err != nil && err != sql.ErrNoRows {

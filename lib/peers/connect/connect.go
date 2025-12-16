@@ -22,6 +22,41 @@ type HandshakeMessage struct {
 	RecepientDeviceId string
 }
 
+var portList []string = []string{
+	"55000",
+	"56000",
+	"60000",
+	"61000",
+	"62000",
+	"65000",
+
+}
+
+func InitTcpListener() (net.Listener,error) {
+	var lastErr error
+
+	var TcpListener net.Listener
+
+	for _,port := range portList {
+		tcpListener,err :=	net.Listen("tcp4",":"+port)
+
+		if err != nil {
+			logger.Info("Failed to bind tcp listener to port %v :: %v",port,err)
+
+			lastErr = err
+
+			continue
+		}
+
+		// tcpPort := tcpListener.Addr().(*net.TCPAddr).Port
+
+		TcpListener = tcpListener
+	}
+
+	return TcpListener,lastErr
+	
+}
+
 func ConnectToPeer(deviceId string,ctx context.Context) (*net.Conn,error) {
 	peer, err := peerscontroller.GetPeerById(db.Database,deviceId,ctx)
 

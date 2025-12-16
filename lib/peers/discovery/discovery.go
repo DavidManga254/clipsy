@@ -189,22 +189,6 @@ func PingPeers(udpConn *net.UDPConn,udpAdrr *net.UDPAddr,ctx context.Context) er
 		Metadata: struct{DeviceName string}{DeviceName: "Dave"},
 	}
 
-	// udpAdrr, err := net.ResolveUDPAddr("udp4","127.0.0.1:40000")
-
-	// if err != nil {
-	// 	logger.Error("Error allocating address :: %v",err)
-
-	// 	return err
-	// }
-
-	// udpConn,err := net.DialUDP("udp4",nil,udpAdrr)
-
-	// if err != nil {
-	// 	logger.Error("Error dialing up %v",err)
-
-	// 	return err
-	// }
-
 	marshalMessage, err := json.Marshal(deviceInfo)
 
 	if err != nil {
