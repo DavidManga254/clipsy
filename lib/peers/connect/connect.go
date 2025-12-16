@@ -23,7 +23,7 @@ type HandshakeMessage struct {
 }
 
 func ConnectToPeer(deviceId string,ctx context.Context) (*net.Conn,error) {
-	peer, err := peerscontroller.GetPeerById(db.Database,deviceId,ctx,)
+	peer, err := peerscontroller.GetPeerById(db.Database,deviceId,ctx)
 
 	if err != nil {
 		logger.Error("Failed to retreive peer by id %v",err)

@@ -18,6 +18,17 @@ func main() {
 	//init db 
 	db.InitDB()
 
+	//open udp port 
+	udpConn,udpAdrr, err := peerDiscovery.InitUdpPort()
+
+	if err != nil {
+		logger.Info("error initializing the udp port closing")
+
+		return
+	}
+
+	defer udpConn.Close()
+
 
 	//subscriber to clipboard 
 	watcherCtx, cancel := context.WithCancel(context.Background())
@@ -32,9 +43,9 @@ func main() {
 
 	// logger.Info("%v",clipboarditems)
 
-	go peerDiscovery.DiscoverPeers(watcherCtx)
+	go peerDiscovery.DiscoverPeers(udpConn,watcherCtx)
 	
-	go peerDiscovery.PingPeers(watcherCtx)
+	go peerDiscovery.PingPeers(udpConn,udpAdrr,watcherCtx)
 
 	exit()
 

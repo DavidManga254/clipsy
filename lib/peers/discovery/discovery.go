@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"strconv"
 	"time"
 
 	db "github.com/DavidManga254/clipsy/lib/DB"
@@ -28,26 +29,63 @@ type DiscoverPeer struct {
 	}
 }
 
+var portList []string = []string{
+	"55000",
+	"56000",
+	"60000",
+	"61000",
+	"62000",
+	"65000",
+
+}
+
+
+func InitUdpPort() (*net.UDPConn, *net.UDPAddr ,error) {
+
+	var lastErr error
+
+	var UdpConn *net.UDPConn
+
+	var UpdArr *net.UDPAddr
+
+
+	for _, port := range portList {
+		udpAdrr, err := net.ResolveUDPAddr("udp4",":"+port)
+
+		if err != nil {
+			logger.Error("Error allocating addressmfor port %v :: %v",port,err)
+
+			lastErr = err
+
+			continue
+		}
+
+		udpConn, err := net.ListenUDP("udp4", udpAdrr)
+
+		if err != nil {
+			logger.Error("Error initializing listen udp :: %v", err)
+
+			lastErr = err
+
+			continue
+		}
+
+		logger.Info("udp addressed opened at port %v",port)
+
+		UdpConn = udpConn
+		UpdArr = udpAdrr
+
+		break
+	}
+
+	return UdpConn, UpdArr, lastErr
+}
+
 /*
 use udp socket to discover peers
 */
 //TODO return statements will stop the loop check how to handle to allow for more reading 
-func DiscoverPeers(ctx context.Context) error {
-	udpAdrr, err := net.ResolveUDPAddr("udp4",":40000")
-
-	if err != nil {
-		logger.Error("Error allocating address :: %v",err)
-
-		return err
-	}
-
-	udpConn, err := net.ListenUDP("udp4", udpAdrr)
-	if err != nil {
-		logger.Error("Error initializing listen udp :: %v", err)
-		return err
-	}
-	defer udpConn.Close()
-
+func DiscoverPeers(UdpConn *net.UDPConn, ctx context.Context) error {
 	var udpPayload []byte = make([]byte, 2048)
 
 	for {
@@ -57,7 +95,7 @@ func DiscoverPeers(ctx context.Context) error {
 			default:
 		}
 
-		err = udpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
+		err := UdpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 
 		if err != nil {
 			logger.Error("Error setting read deadline :: %v", err)
@@ -68,7 +106,7 @@ func DiscoverPeers(ctx context.Context) error {
 		logger.Info("reading")
 
 
-		byteNumCopied, address, err := udpConn.ReadFromUDP(udpPayload)
+		byteNumCopied, address, err := UdpConn.ReadFromUDP(udpPayload)
 
 		if err != nil {
 			// treat timeout as "no data, try again"
@@ -124,6 +162,8 @@ func DiscoverPeers(ctx context.Context) error {
 			Is_trusted:0,
 		}
 
+		logger.Info("Logged data %v",peerDbData)
+
 		err = peerscontroller.New(db.Database,peerDbData,ctx)
 
 		if err != nil {
@@ -133,7 +173,7 @@ func DiscoverPeers(ctx context.Context) error {
 	}
 }
 
-func PingPeers(ctx context.Context) error{
+func PingPeers(udpConn *net.UDPConn,udpAdrr *net.UDPAddr,ctx context.Context) error{
 	deviceId,err := appmetacontroller.GetOrCreateDeviceID(ctx,db.Database)
 
 	if err != nil {
@@ -149,21 +189,21 @@ func PingPeers(ctx context.Context) error{
 		Metadata: struct{DeviceName string}{DeviceName: "Dave"},
 	}
 
-	udpAdrr, err := net.ResolveUDPAddr("udp4","127.0.0.1:40000")
+	// udpAdrr, err := net.ResolveUDPAddr("udp4","127.0.0.1:40000")
 
-	if err != nil {
-		logger.Error("Error allocating address :: %v",err)
+	// if err != nil {
+	// 	logger.Error("Error allocating address :: %v",err)
 
-		return err
-	}
+	// 	return err
+	// }
 
-	udpConn,err := net.DialUDP("udp4",nil,udpAdrr)
+	// udpConn,err := net.DialUDP("udp4",nil,udpAdrr)
 
-	if err != nil {
-		logger.Error("Error dialing up %v",err)
+	// if err != nil {
+	// 	logger.Error("Error dialing up %v",err)
 
-		return err
-	}
+	// 	return err
+	// }
 
 	marshalMessage, err := json.Marshal(deviceInfo)
 
@@ -182,13 +222,29 @@ func PingPeers(ctx context.Context) error{
 			case <-ctx.Done():
 				return ctx.Err()
 			case <-ticker.C:{
-				_,err := udpConn.Write(marshalMessage)
 
-				if err != nil {
-					logger.Error("error sending ping message %v",err)
+				for _, port := range portList{
+					portInt,err := strconv.ParseInt(port,10,0)
 
-					continue
+					if err != nil {
+						logger.Error("Failed to convert port string to int  %v",err)
+
+						continue
+					}
+
+					portAddress := &net.UDPAddr{
+						IP:   net.IPv4bcast,
+						Port: int(portInt),
+					}
+					_,err = udpConn.WriteToUDP(marshalMessage,portAddress)
+
+					if err != nil {
+						logger.Error("error sending ping message %v",err)
+
+						continue
+					}
 				}
+				
 			}
 		}
 	}
