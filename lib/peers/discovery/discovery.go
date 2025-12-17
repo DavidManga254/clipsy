@@ -70,6 +70,8 @@ func InitUdpPort() (*net.UDPConn, *net.UDPAddr ,error) {
 			continue
 		}
 
+		lastErr = err
+
 		logger.Info("udp addressed opened at port %v",port)
 
 		UdpConn = udpConn

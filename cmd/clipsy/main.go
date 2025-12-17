@@ -53,6 +53,8 @@ func main() {
 		return
 	}
 
+	defer tcpListener.Close()
+
 	tcpAddress := tcpListener.Addr().(*net.TCPAddr)
 
 	tcpPort := tcpAddress.Port

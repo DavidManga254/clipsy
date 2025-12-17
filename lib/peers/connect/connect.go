@@ -38,19 +38,22 @@ func InitTcpListener() (net.Listener,error) {
 	var TcpListener net.Listener
 
 	for _,port := range portList {
+		logger.Info("current tcp port check %v",port)
 		tcpListener,err :=	net.Listen("tcp4",":"+port)
 
 		if err != nil {
-			logger.Info("Failed to bind tcp listener to port %v :: %v",port,err)
+			logger.Error("Failed to bind tcp listener to port %v :: %v",port,err)
 
 			lastErr = err
 
 			continue
 		}
 
-		// tcpPort := tcpListener.Addr().(*net.TCPAddr).Port
+		lastErr = err
 
 		TcpListener = tcpListener
+
+		break
 	}
 
 	return TcpListener,lastErr
