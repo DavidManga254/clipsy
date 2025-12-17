@@ -36,8 +36,8 @@ func main() {
 	//open udp port 
 	udpConn,udpAdrr, err := peerDiscovery.InitUdpPort()
 
-	if err != nil {
-		logger.Info("error initializing the udp port closing")
+	if err != nil || udpConn == nil {
+		logger.Error("error initializing the udp port, closing :: %v",err)
 
 		return
 	}
