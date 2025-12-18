@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net"
 	"strconv"
-	"syscall"
 	"time"
 
 	db "github.com/DavidManga254/clipsy/lib/DB"
@@ -61,15 +60,15 @@ func InitUdpPort() (*net.UDPConn, *net.UDPAddr ,error) {
 			continue
 		}
 
-		// udpConn, err := net.ListenUDP("udp4", udpAdrr)
+		udpConn, err := net.ListenUDP("udp4", udpAdrr)
 
-		// if err != nil {
-		// 	logger.Error("Error initializing listen udp :: %v", err)
+		if err != nil {
+			logger.Error("Error initializing listen udp :: %v", err)
 
-		// 	lastErr = err
+			lastErr = err
 
-		// 	continue
-		// }
+			continue
+		}
 
 		// file, err := udpConn.File()
 
@@ -96,29 +95,29 @@ func InitUdpPort() (*net.UDPConn, *net.UDPAddr ,error) {
 		// 	continue
 		// }
 
-		lc := net.ListenConfig{
-            Control: func(network, address string, c syscall.RawConn) error {
-                var opErr error
-                err := c.Control(func(fd uintptr) {
-                    // Enable broadcast - works on Windows
-                    opErr = syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_BROADCAST, 1)
-                })
-                if err != nil {
-                    return err
-                }
-                return opErr
-            },
-        }
+		// lc := net.ListenConfig{
+        //     Control: func(network, address string, c syscall.RawConn) error {
+        //         var opErr error
+        //         err := c.Control(func(fd uintptr) {
+        //             // Enable broadcast - works on Windows
+        //             opErr = syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_BROADCAST, 1)
+        //         })
+        //         if err != nil {
+        //             return err
+        //         }
+        //         return opErr
+        //     },
+        // }
 
         // Listen using the configured listener
-        conn, err := lc.ListenPacket(context.Background(), "udp4", udpAdrr.String())
-        if err != nil {
-            logger.Error("Error initializing listen udp :: %v", err)
-            lastErr = err
-            continue
-        }
+        // conn, err := lc.ListenPacket(context.Background(), "udp4", udpAdrr.String())
+        // if err != nil {
+        //     logger.Error("Error initializing listen udp :: %v", err)
+        //     lastErr = err
+        //     continue
+        // }
 
-        udpConn := conn.(*net.UDPConn)
+        // udpConn := conn.(*net.UDPConn)
         
 
 		lastErr = err
