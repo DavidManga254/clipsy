@@ -160,6 +160,8 @@ func DiscoverPeers(UdpConn *net.UDPConn, ctx context.Context) error {
 
 		byteNumCopied, address, err := UdpConn.ReadFromUDP(udpPayload)
 
+		logger.Info("here us byteNumcopied :: %v",byteNumCopied)
+
 		if err != nil {
 			// treat timeout as "no data, try again"
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
@@ -190,12 +192,17 @@ func DiscoverPeers(UdpConn *net.UDPConn, ctx context.Context) error {
 			continue
 		}
 
+		logger.Info("here is received payload %v",payload)
+
 		deviceId,err := appmetacontroller.GetOrCreateDeviceID(ctx,db.Database)
 
 		if err != nil {
 			logger.Error("error getting device id:: %v", err)
 			continue
 		}
+
+		logger.Info("Here is my id %v",deviceId)
+		logger.Info("Here is received id %v",payload.DeviceID)
 
 		if deviceId == payload.DeviceID {
 			continue
