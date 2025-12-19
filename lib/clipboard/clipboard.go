@@ -9,7 +9,7 @@ import (
 
 	db "github.com/DavidManga254/clipsy/lib/DB"
 	clipboarditemcontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/clipBoardItemController"
-	windowsClip "github.com/DavidManga254/clipsy/lib/clipboard/windows"
+	windowsClip "github.com/DavidManga254/clipsy/lib/clipboard/windowsClipboard"
 	"github.com/DavidManga254/clipsy/lib/logger"
 	"github.com/google/uuid"
 	"golang.design/x/clipboard"
