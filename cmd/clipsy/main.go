@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	db "github.com/DavidManga254/clipsy/lib/DB"
-	appmetacontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/appMetaController"
 	clip "github.com/DavidManga254/clipsy/lib/clipboard"
+	db "github.com/DavidManga254/clipsy/lib/db"
+	appmetacontroller "github.com/DavidManga254/clipsy/lib/db/controllers/appMetaController"
 	"github.com/DavidManga254/clipsy/lib/logger"
 	connectPeers "github.com/DavidManga254/clipsy/lib/peers/connect"
 	peerDiscovery "github.com/DavidManga254/clipsy/lib/peers/discovery"

@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	db "github.com/DavidManga254/clipsy/lib/DB"
-	appmetacontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/appMetaController"
-	peerscontroller "github.com/DavidManga254/clipsy/lib/DB/controllers/peerController"
+	db "github.com/DavidManga254/clipsy/lib/db"
+	appmetacontroller "github.com/DavidManga254/clipsy/lib/db/controllers/appMetaController"
+	peerscontroller "github.com/DavidManga254/clipsy/lib/db/controllers/peerController"
 	"github.com/DavidManga254/clipsy/lib/logger"
 )
 

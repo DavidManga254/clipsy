@@ -3,9 +3,9 @@ package migrations
 import (
 	"database/sql"
 
-	appmetamigration "github.com/DavidManga254/clipsy/lib/DB/migrations/appMeta"
-	clipboardbItemMigration "github.com/DavidManga254/clipsy/lib/DB/migrations/clipboardItem"
-	peersMigration "github.com/DavidManga254/clipsy/lib/DB/migrations/peer"
+	appmetamigration "github.com/DavidManga254/clipsy/lib/db/migrations/appMeta"
+	clipboardbItemMigration "github.com/DavidManga254/clipsy/lib/db/migrations/clipboardItem"
+	peersMigration "github.com/DavidManga254/clipsy/lib/db/migrations/peer"
 )
 
 func Migrate(db *sql.DB) error {

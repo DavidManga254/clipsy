@@ -1,4 +1,4 @@
-package db
+package DB
 
 import (
 	"database/sql"
@@ -6,7 +6,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/DavidManga254/clipsy/lib/DB/migrations"
+	"github.com/DavidManga254/clipsy/lib/db/migrations"
 	"github.com/DavidManga254/clipsy/lib/logger"
 )
 
